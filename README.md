@@ -110,7 +110,7 @@ ErrorCode,E002,1
 
 
 
-!\[Main UI](./docs/screenshot\_main.png)
+![Main UI](./docs/screenshot_main.png)
 
 
 
