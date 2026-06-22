@@ -1,0 +1,7 @@
+Category,Name,Value
+Summary,Total,8
+Summary,PASS,5
+Summary,FAIL,3
+Summary,Yield,62.50%
+ErrorCode,E001,2
+ErrorCode,E002,1
