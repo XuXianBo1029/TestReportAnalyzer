@@ -16,11 +16,20 @@ Test Report Analyzer 是一個使用 C# WinForms 開發的測試報告分析工�
 
 * 匯入 CSV 測試報告
 * 顯示測試資料表格
+* 依測試結果篩選資料，支援 All / PASS / FAIL
 * 統計總筆數
 * 統計 PASS / FAIL 數量
 * 計算良率 Yield
 * 統計 ErrorCode 出現次數
 * 匯出摘要 CSV 報告
+
+## 使用方式
+
+1. 開啟程式後，點選「選擇 CSV」匯入測試報告。
+2. 匯入後，測試資料會顯示於 DataGridView 表格中。
+3. 程式會自動統計總筆數、PASS / FAIL 數量、良率與 ErrorCode 次數。
+4. 可透過下拉選單選擇 All / PASS / FAIL，篩選畫面上顯示的測試資料。
+5. 點選「匯出摘要CSV」可將分析結果輸出成摘要 CSV 報告。
 
 ## CSV 格式範例
 

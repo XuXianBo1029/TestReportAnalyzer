@@ -10,12 +10,14 @@ namespace TestReportAnalyzer
     {
         private Button btnLoadCsv;
         private Button btnExportSummaryCsv;
+        private ComboBox cboFilter;
         private DataGridView dataGridView;
         private Label lblTotal;
         private Label lblPass;
         private Label lblFail;
         private Label lblYield;
         private ListBox listErrorCode;
+        private DataTable? currentTable;
 
         public Form1()
         {
@@ -27,7 +29,7 @@ namespace TestReportAnalyzer
         {
             this.Text = "Test Report Analyzer";
             this.Width = 1000;
-            this.Height = 700;
+            this.Height = 730;
 
             btnLoadCsv = new Button();
             btnLoadCsv.Text = "選擇 CSV";
@@ -47,37 +49,50 @@ namespace TestReportAnalyzer
             btnExportSummaryCsv.Click += BtnExportSummaryCsv_Click;
             this.Controls.Add(btnExportSummaryCsv);
 
+            cboFilter = new ComboBox();
+            cboFilter.Left = btnExportSummaryCsv.Left + btnExportSummaryCsv.Width + 10;
+            cboFilter.Top = 20;
+            cboFilter.Width = 100;
+            cboFilter.Height = 35;
+            cboFilter.DropDownStyle = ComboBoxStyle.DropDownList;
+            cboFilter.Items.Add("All");
+            cboFilter.Items.Add("PASS");
+            cboFilter.Items.Add("FAIL");
+            cboFilter.SelectedIndex = 0;
+            cboFilter.SelectedIndexChanged += CboFilter_SelectedIndexChanged;
+            this.Controls.Add(cboFilter);
+
             lblTotal = new Label();
             lblTotal.Text = "總筆數：0";
-            lblTotal.Left = btnExportSummaryCsv.Left + btnExportSummaryCsv.Width + 10;
-            lblTotal.Top = 27;
+            lblTotal.Left = 20;
+            lblTotal.Top = btnLoadCsv.Top + btnLoadCsv.Height + 10;
             lblTotal.Width = 150;
             this.Controls.Add(lblTotal);
 
             lblPass = new Label();
             lblPass.Text = "PASS：0";
             lblPass.Left = lblTotal.Left + lblTotal.Width + 10;
-            lblPass.Top = 27;
+            lblPass.Top = lblTotal.Top;
             lblPass.Width = 120;
             this.Controls.Add(lblPass);
 
             lblFail = new Label();
             lblFail.Text = "FAIL：0";
             lblFail.Left = lblPass.Left + lblPass.Width + 10;
-            lblFail.Top = 27;
+            lblFail.Top = lblTotal.Top;
             lblFail.Width = 120;
             this.Controls.Add(lblFail);
 
             lblYield = new Label();
             lblYield.Text = "良率：0%";
             lblYield.Left = lblFail.Left + lblFail.Width + 10;
-            lblYield.Top = 27;
+            lblYield.Top = lblTotal.Top;
             lblYield.Width = 150;
             this.Controls.Add(lblYield);
 
             dataGridView = new DataGridView();
             dataGridView.Left = 20;
-            dataGridView.Top = 70;
+            dataGridView.Top = lblTotal.Top + lblTotal.Height + 10;
             dataGridView.Width = 700;
             dataGridView.Height = 550;
             dataGridView.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
@@ -106,6 +121,7 @@ namespace TestReportAnalyzer
             if (openFileDialog.ShowDialog() == DialogResult.OK)
             {
                 DataTable table = ReadCsv(openFileDialog.FileName);
+                currentTable = table;
                 dataGridView.DataSource = table;
                 AnalyzeReport(table);
             }
@@ -113,17 +129,19 @@ namespace TestReportAnalyzer
 
         private void BtnExportSummaryCsv_Click(object? sender, EventArgs e)
         {
-            if (dataGridView.DataSource is not DataTable table)
+            if (currentTable is null)
             {
                 MessageBox.Show("請先載入 CSV 檔案");
                 return;
             }
+
             SaveFileDialog saveFileDialog = new SaveFileDialog();
             saveFileDialog.Filter = "CSV files (*.csv)|*.csv|All files (*.*)|*.*";
             saveFileDialog.FileName = "Summary.csv";
+
             if (saveFileDialog.ShowDialog() == DialogResult.OK)
             {
-                ExportSummaryCsv(table, saveFileDialog.FileName);
+                ExportSummaryCsv(currentTable, saveFileDialog.FileName);
                 MessageBox.Show("摘要 CSV 已匯出");
             }
         }
@@ -318,6 +336,29 @@ namespace TestReportAnalyzer
             }
 
             File.WriteAllLines(filePath, lines);
+        }
+
+        private void CboFilter_SelectedIndexChanged(object? sender, EventArgs e)
+        {
+            if (currentTable is null)
+            {
+                return;
+            }
+
+            string selected = cboFilter.SelectedItem?.ToString() ?? "All";
+            DataView view = currentTable.DefaultView;
+
+            if (selected == "All")
+            {
+                view.RowFilter = "";
+            }
+            else
+            {
+                string safe = selected.Replace("'", "''");
+                view.RowFilter = $"Result = '{safe}'";
+            }
+
+            dataGridView.DataSource = view;
         }
     }
 }
