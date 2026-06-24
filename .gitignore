@@ -6,3 +6,7 @@ obj/
 *.cache
 *.log
 desktop.ini
+
+*.db
+*.db-shm
+*.db-wal

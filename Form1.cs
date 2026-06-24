@@ -3,6 +3,7 @@ using System.Data;
 using System.IO;
 using System.Linq;
 using System.Windows.Forms;
+using Microsoft.Data.Sqlite;
 
 namespace TestReportAnalyzer
 {
@@ -11,6 +12,8 @@ namespace TestReportAnalyzer
         private Button btnLoadCsv;
         private Button btnExportSummaryCsv;
         private ComboBox cboFilter;
+        private Button btnSaveToDb;
+        private Button btnLoadFromDb;
         private DataGridView dataGridView;
         private Label lblTotal;
         private Label lblPass;
@@ -18,11 +21,94 @@ namespace TestReportAnalyzer
         private Label lblYield;
         private ListBox listErrorCode;
         private DataTable? currentTable;
+        private readonly string dbPath = Path.Combine(Application.StartupPath, "test_reports.db");
 
         public Form1()
         {
             InitializeComponent();
             BuildUI();
+            InitializeDatabase();
+        }
+
+        private void InitializeDatabase()
+        {
+            using SqliteConnection connection = new SqliteConnection($"Data Source={dbPath}");
+            connection.Open();
+
+            string sql = @"
+                CREATE TABLE IF NOT EXISTS TestRecords (
+                    Id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    TestTime TEXT,
+                    Station TEXT,
+                    Item TEXT,
+                    Result TEXT,
+                    ErrorCode TEXT
+                );
+            ";
+
+            using SqliteCommand command = new SqliteCommand(sql, connection);
+            command.ExecuteNonQuery();
+        }
+
+        private int SaveTableToDatabase(DataTable table)
+        {
+            int insertCount = 0;
+
+            using SqliteConnection connection = new SqliteConnection($"Data Source={dbPath}");
+            connection.Open();
+
+            foreach (DataRow row in table.Rows)
+            {
+                string testTime = table.Columns.Contains("Time") ? row["Time"]?.ToString() ?? "" : "";
+                string station = table.Columns.Contains("Station") ? row["Station"]?.ToString() ?? "" : "";
+                string item = table.Columns.Contains("Item") ? row["Item"]?.ToString() ?? "" : "";
+                string result = table.Columns.Contains("Result") ? row["Result"]?.ToString() ?? "" : "";
+                string errorCode = table.Columns.Contains("ErrorCode") ? row["ErrorCode"]?.ToString() ?? "" : "";
+
+                string sql = @"
+                    INSERT INTO TestRecords (TestTime, Station, Item, Result, ErrorCode)
+                    VALUES ($TestTime, $Station, $Item, $Result, $ErrorCode);
+                ";
+
+                using SqliteCommand command = new SqliteCommand(sql, connection);
+                command.Parameters.AddWithValue("$TestTime", testTime);
+                command.Parameters.AddWithValue("$Station", station);
+                command.Parameters.AddWithValue("$Item", item);
+                command.Parameters.AddWithValue("$Result", result);
+                command.Parameters.AddWithValue("$ErrorCode", errorCode);
+
+                command.ExecuteNonQuery();
+                insertCount++;
+            }
+
+            return insertCount;
+        }
+
+        private DataTable LoadTableFromDatabase()
+        {
+            DataTable table = new DataTable();
+
+            using SqliteConnection connection = new SqliteConnection($"Data Source={dbPath}");
+            connection.Open();
+
+            string sql = @"
+                SELECT 
+                    Id,
+                    TestTime AS Time,
+                    Station,
+                    Item,
+                    Result,
+                    ErrorCode
+                FROM TestRecords
+                ORDER BY Id;
+            ";
+
+            using SqliteCommand command = new SqliteCommand(sql, connection);
+            using SqliteDataReader reader = command.ExecuteReader();
+
+            table.Load(reader);
+
+            return table;
         }
 
         private void BuildUI()
@@ -61,6 +147,24 @@ namespace TestReportAnalyzer
             cboFilter.SelectedIndex = 0;
             cboFilter.SelectedIndexChanged += CboFilter_SelectedIndexChanged;
             this.Controls.Add(cboFilter);
+
+            btnSaveToDb = new Button();
+            btnSaveToDb.Text = "儲存到資料庫";
+            btnSaveToDb.Left = cboFilter.Left + cboFilter.Width + 10;
+            btnSaveToDb.Top = 20;
+            btnSaveToDb.Width = 130;
+            btnSaveToDb.Height = 35;
+            btnSaveToDb.Click += BtnSaveToDb_Click;
+            this.Controls.Add(btnSaveToDb);
+
+            btnLoadFromDb = new Button();
+            btnLoadFromDb.Text = "載入資料庫紀錄";
+            btnLoadFromDb.Left = btnSaveToDb.Left + btnSaveToDb.Width + 10;
+            btnLoadFromDb.Top = 20;
+            btnLoadFromDb.Width = 140;
+            btnLoadFromDb.Height = 35;
+            //btnLoadFromDb.Click += BtnLoadFromDb_Click;
+            this.Controls.Add(btnLoadFromDb);
 
             lblTotal = new Label();
             lblTotal.Text = "總筆數：0";
@@ -144,6 +248,31 @@ namespace TestReportAnalyzer
                 ExportSummaryCsv(currentTable, saveFileDialog.FileName);
                 MessageBox.Show("摘要 CSV 已匯出");
             }
+        }
+
+        private void BtnSaveToDb_Click(object? sender, EventArgs e)
+        {
+            if (currentTable is null)
+            {
+                MessageBox.Show("請先載入 CSV 檔案");
+                return;
+            }
+
+            int insertCount = SaveTableToDatabase(currentTable);
+            MessageBox.Show($"已儲存 {insertCount} 筆資料到 SQLite 資料庫");
+        }
+
+        private void BtnLoadFromDb_Click(object? sender, EventArgs e)
+        {
+            DataTable table = LoadTableFromDatabase();
+
+            currentTable = table;
+            dataGridView.DataSource = table;
+            AnalyzeReport(table);
+
+            cboFilter.SelectedIndex = 0;
+
+            MessageBox.Show($"已載入 {table.Rows.Count} 筆資料");
         }
 
         private DataTable ReadCsv(string filePath)
