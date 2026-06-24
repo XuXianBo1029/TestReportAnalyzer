@@ -163,7 +163,7 @@ namespace TestReportAnalyzer
             btnLoadFromDb.Top = 20;
             btnLoadFromDb.Width = 140;
             btnLoadFromDb.Height = 35;
-            //btnLoadFromDb.Click += BtnLoadFromDb_Click;
+            btnLoadFromDb.Click += BtnLoadFromDb_Click;
             this.Controls.Add(btnLoadFromDb);
 
             lblTotal = new Label();
