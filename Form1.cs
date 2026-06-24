@@ -14,6 +14,7 @@ namespace TestReportAnalyzer
         private ComboBox cboFilter;
         private Button btnSaveToDb;
         private Button btnLoadFromDb;
+        private Button btnClearDb;
         private DataGridView dataGridView;
         private Label lblTotal;
         private Label lblPass;
@@ -111,6 +112,19 @@ namespace TestReportAnalyzer
             return table;
         }
 
+        private int ClearDatabase()
+        {
+            using SqliteConnection connection = new SqliteConnection($"Data Source={dbPath}");
+            connection.Open();
+
+            string sql = "DELETE FROM TestRecords;";
+
+            using SqliteCommand command = new SqliteCommand(sql, connection);
+            int deletedCount = command.ExecuteNonQuery();
+
+            return deletedCount;
+        }
+
         private void BuildUI()
         {
             this.Text = "Test Report Analyzer";
@@ -165,6 +179,15 @@ namespace TestReportAnalyzer
             btnLoadFromDb.Height = 35;
             btnLoadFromDb.Click += BtnLoadFromDb_Click;
             this.Controls.Add(btnLoadFromDb);
+
+            btnClearDb = new Button();
+            btnClearDb.Text = "清空資料庫";
+            btnClearDb.Left = btnLoadFromDb.Left + btnLoadFromDb.Width + 10;
+            btnClearDb.Top = 20;
+            btnClearDb.Width = 120;
+            btnClearDb.Height = 35;
+            btnClearDb.Click += BtnClearDb_Click;
+            this.Controls.Add(btnClearDb);
 
             lblTotal = new Label();
             lblTotal.Text = "總筆數：0";
@@ -273,6 +296,31 @@ namespace TestReportAnalyzer
             cboFilter.SelectedIndex = 0;
 
             MessageBox.Show($"已載入 {table.Rows.Count} 筆資料");
+        }
+
+        private void BtnClearDb_Click(object? sender, EventArgs e)
+        {
+            DialogResult result = MessageBox.Show(
+                "確定要清空資料庫內所有測試紀錄嗎？",
+                "確認清空資料庫",
+                MessageBoxButtons.YesNo,
+                MessageBoxIcon.Warning
+            );
+
+            if (result != DialogResult.Yes)
+            {
+                return;
+            }
+
+            int deletedCount = ClearDatabase();
+
+            DataTable table = LoadTableFromDatabase();
+            currentTable = table;
+            dataGridView.DataSource = table;
+            AnalyzeReport(table);
+            cboFilter.SelectedIndex = 0;
+
+            MessageBox.Show($"已清空 {deletedCount} 筆資料");
         }
 
         private DataTable ReadCsv(string filePath)
